@@ -1,0 +1,89 @@
+# ============================================================
+# AMBIENTE: DEV
+# Recursos reduzidos, logs verbosos, sem restart automático
+# ============================================================
+
+services:
+
+  # ─── API Node.js ─────────────────────────────────────────
+  app:
+    build:
+      context: ../../app
+      dockerfile: Dockerfile
+    container_name: demo-api-dev
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ─── Prometheus ──────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus-dev
+    ports:
+      - "9090:9090"
+    volumes:
+      - ../../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-lifecycle'
+      - '--log.level=info'
+    networks:
+      - observability
+
+  # ─── Node Exporter (métricas do host) ────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node-exporter-dev
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - observability
+
+  # ─── Grafana ─────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana-dev
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123      # Troque em produção!
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_LOG_LEVEL=warn
+    volumes:
+      - ../../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

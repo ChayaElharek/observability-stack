@@ -1,0 +1,66 @@
+# ============================================================
+# REGRAS DE ALERTA — Prometheus
+# ============================================================
+
+groups:
+  - name: api_alerts
+    rules:
+
+      # Alerta se a API ficar fora do ar por mais de 1 minuto
+      - alert: APIDown
+        expr: up{job="demo-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API fora do ar"
+          description: "A instância {{ $labels.instance }} está inacessível há mais de 1 minuto."
+
+      # Alerta se taxa de erros 5xx ultrapassar 5%
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status_code=~"5.."}[5m])
+          /
+          rate(http_requests_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Taxa de erros elevada"
+          description: "Taxa de erros 5xx acima de 5% nos últimos 5 minutos."
+
+      # Alerta se latência p95 ultrapassar 1 segundo
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95,
+            rate(http_request_duration_seconds_bucket[5m])
+          ) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latência elevada (p95)"
+          description: "95% das requisições estão demorando mais de 1s."
+
+  - name: infrastructure_alerts
+    rules:
+
+      # Alerta se CPU ultrapassar 80% por 5 minutos
+      - alert: HighCPU
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "CPU elevada"
+          description: "CPU acima de 80% em {{ $labels.instance }}."
+
+      # Alerta se disco ultrapassar 85%
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 15
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Espaço em disco crítico"
+          description: "Menos de 15% de disco disponível em {{ $labels.instance }}."

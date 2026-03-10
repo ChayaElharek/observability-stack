@@ -1,0 +1,87 @@
+# ============================================================
+# AMBIENTE: PROD
+# Restart automático, retenção maior, senha via env var
+# ============================================================
+
+services:
+
+  app:
+    image: ${APP_IMAGE:-demo-api:latest}
+    container_name: demo-api-prod
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - observability
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9090:9090"    # Exposto só localmente em prod
+    volumes:
+      - ../../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../../prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'   # 30 dias em prod
+      - '--web.enable-lifecycle'
+      - '--log.level=warn'
+    networks:
+      - observability
+
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node-exporter-prod
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana:10.2.3
+    container_name: grafana-prod
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3001:3000"    # Exposto só localmente — use NGINX como proxy
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_ROOT_URL:-http://localhost:3001}
+      - GF_LOG_LEVEL=warn
+    volumes:
+      - ../../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../../grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - observability
+    depends_on:
+      - prometheus
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

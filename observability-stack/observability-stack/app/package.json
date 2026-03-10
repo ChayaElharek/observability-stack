@@ -1,0 +1,11 @@
+{
+  "name": "observability-demo-api",
+  "version": "1.0.0",
+  "description": "API de exemplo monitorada com Prometheus + Grafana",
+  "main": "index.js",
+  "scripts": { "start": "node index.js" },
+  "dependencies": {
+    "express": "^4.18.2",
+    "prom-client": "^15.1.0"
+  }
+}

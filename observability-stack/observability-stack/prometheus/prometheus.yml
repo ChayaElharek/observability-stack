@@ -1,0 +1,36 @@
+# ============================================================
+# CONFIGURAÇÃO DO PROMETHEUS
+# ============================================================
+
+global:
+  scrape_interval:     15s  # Coleta métricas a cada 15s
+  evaluation_interval: 15s  # Avalia regras de alerta a cada 15s
+  external_labels:
+    monitor: 'observability-stack'
+
+# ─── Regras de alerta ───────────────────────────────────────
+rule_files:
+  - "alerts.yml"
+
+# ─── Jobs de coleta (scrape) ────────────────────────────────
+scrape_configs:
+
+  # O próprio Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Nossa API Node.js
+  - job_name: 'demo-api'
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    static_configs:
+      - targets: ['app:3000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  # Node Exporter — métricas do servidor host (CPU, RAM, Disco)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']

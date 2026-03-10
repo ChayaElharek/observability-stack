@@ -1,0 +1,15 @@
+# ============================================================
+# DASHBOARD PROVISIONING — carrega dashboards automaticamente
+# ============================================================
+
+apiVersion: 1
+
+providers:
+  - name: 'default'
+    orgId: 1
+    folder: 'Observability Stack'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards
