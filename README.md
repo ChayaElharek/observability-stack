@@ -139,4 +139,4 @@ Dev e prod têm necessidades diferentes: dev prioriza visibilidade e facilidade 
 
 ---
 
-Feito com ❤️ por [Chaya Elharar](https://chayacode.com.br) | DevOps & Cloud Infrastructure
+Feito com por [Chaya Elharar](https://chayacode.com.br) | DevOps & Cloud Infrastructure
