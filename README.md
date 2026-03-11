@@ -138,5 +138,9 @@ Dev e prod têm necessidades diferentes: dev prioriza visibilidade e facilidade 
 - [ ] GitHub Actions para lint e validação dos configs
 
 ---
+## 📸 Screenshots
+
+### Grafana Dashboard — API Overview
+![Grafana Dashboard](https://raw.githubusercontent.com/ChayaElharek/observability-stack/main/Grafana.png)
 
 Feito com por [Chaya Elharar](https://chayacode.com.br) | DevOps & Cloud Infrastructure
