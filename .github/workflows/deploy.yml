@@ -16,12 +16,12 @@ jobs:
 
       - name: Validate docker-compose syntax
         run: |
-          docker compose -f docker-compose.yml config --quiet
+          docker compose -f environments/prod/docker-compose.yml config --quiet
           echo "docker-compose.yml is valid"
 
       - name: Check required files
         run: |
-          for file in docker-compose.yml prometheus/prometheus.yml; do
+          for file in environments/prod/docker-compose.yml; do
             if [ ! -f "$file" ]; then
               echo "Missing required file: $file"
               exit 1
