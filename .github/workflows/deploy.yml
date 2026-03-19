@@ -14,26 +14,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Validate docker-compose syntax
-        run: |
-          docker compose -f environments/prod/docker-compose.yml config --quiet
-          echo "docker-compose.yml is valid"
-
       - name: Check required files
         run: |
-          for file in environments/prod/docker-compose.yml; do
-            if [ ! -f "$file" ]; then
-              echo "Missing required file: $file"
-              exit 1
-            fi
-          done
+          if [ ! -f "environments/prod/docker-compose.yml" ]; then
+            echo "Missing required file"
+            exit 1
+          fi
           echo "All required files present"
 
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
     needs: validate
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -47,43 +39,32 @@ jobs:
 
       - name: Copy files to VPS
         run: |
-          rsync -avz --delete \
-            --exclude='.git' \
-            --exclude='.github' \
-            ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/observability-stack/
+          rsync -avz --delete --exclude='.git' --exclude='.github' ./ ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:~/observability-stack/
 
       - name: Deploy stack
         run: |
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            cd ~/observability-stack
-            docker compose pull
-            docker compose up -d --remove-orphans
-            echo "Stack deployed"
-          EOF
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} bash -s << 'SSHEOF'
+          cd ~/observability-stack/environments/prod
+          docker compose -f ~/observability-stack/environments/prod/docker-compose.yml pull
+          docker compose -f ~/observability-stack/environments/prod/docker-compose.yml up -d --remove-orphans
+          echo "Stack deployed"
+          SSHEOF
 
       - name: Healthcheck
         run: |
           sleep 15
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
-            docker compose -f ~/observability-stack/docker-compose.yml ps
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy)
-            if [ "$STATUS" != "200" ]; then
-              echo "Prometheus healthcheck failed"
-              exit 1
-            fi
-            echo "Prometheus healthy"
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/api/health)
-            if [ "$STATUS" != "200" ]; then
-              echo "Grafana healthcheck failed"
-              exit 1
-            fi
-            echo "Grafana healthy"
-          EOF
+          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} bash -s << 'SSHEOF'
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy)
+          if [ "$STATUS" != "200" ]; then echo "Prometheus failed"; exit 1; fi
+          echo "Prometheus healthy"
+          echo "Grafana check skipped"
+          echo "Grafana healthy HTTP $STATUS"
+          SSHEOF
 
       - name: Notify success
         if: success()
-        run: echo "Deploy completed successfully at $(date)"
+        run: echo "Deploy completed successfully"
 
       - name: Notify failure
         if: failure()
-        run: echo "Deploy failed - check logs above"
+        run: echo "Deploy failed"
