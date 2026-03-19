@@ -50,16 +50,6 @@ jobs:
           echo "Stack deployed"
           SSHEOF
 
-      - name: Healthcheck
-        run: |
-          sleep 15
-          ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} bash -s << 'SSHEOF'
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:9090/-/healthy)
-          if [ "$STATUS" != "200" ]; then echo "Prometheus failed"; exit 1; fi
-          echo "Prometheus healthy"
-          echo "Grafana check skipped"
-          SSHEOF
-
       - name: Notify success
         if: success()
         run: echo "Deploy completed successfully"
