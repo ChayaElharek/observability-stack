@@ -58,7 +58,6 @@ jobs:
           if [ "$STATUS" != "200" ]; then echo "Prometheus failed"; exit 1; fi
           echo "Prometheus healthy"
           echo "Grafana check skipped"
-          echo "Grafana healthy HTTP $STATUS"
           SSHEOF
 
       - name: Notify success
